@@ -43,6 +43,7 @@ ENV_FILE = CONFIG_DIR / ".env"
 CONFIG_YAML = CONFIG_DIR / "config.yaml"
 ENV_TEMPLATE = REPO / ".env.example"
 YAML_TEMPLATE = REPO / "config.example.yaml"
+SYNC_UID = 10001  # the sync container's user (sync/Dockerfile); it reads config.yaml
 
 AGENT_RE = re.compile(r"^[a-z_][a-z0-9_-]{0,30}$")
 HOST_RE = re.compile(r"^[a-z0-9-]+(\.[a-z0-9-]+)+$")
@@ -304,7 +305,7 @@ def wait_until(description: str, check: Callable[[], bool], timeout_s: int = 900
                "sudo ./bin/cb-compose logs --tail 100")
 
 
-def write_private(ctx: Context, path: Path, text: str) -> None:
+def write_private(ctx: Context, path: Path, text: str, owner: Optional[int] = None) -> None:
     if ctx.dry:
         ctx.say(f"would write {path} (contents are not shown)")
         return
@@ -312,9 +313,12 @@ def write_private(ctx: Context, path: Path, text: str) -> None:
     fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.")
     with os.fdopen(fd, "w", encoding="utf-8") as handle:
         handle.write(text)
-    os.chmod(tmp, 0o600)
+    mode = 0o600 if owner is None else 0o400
+    if owner is not None:
+        os.chown(tmp, owner, owner)
+    os.chmod(tmp, mode)
     os.replace(tmp, path)
-    ctx.say(f"wrote {path} (mode 600, contents not shown)")
+    ctx.say(f"wrote {path} (mode {mode:o}, contents not shown)")
 
 
 def current_env() -> dict[str, str]:
@@ -410,7 +414,9 @@ def gather(ctx: Context) -> Answers:
     folder = ask(ctx, "Name of the one folder the agent may use", folder_default, check_folder)
     album = ask(ctx, "Name of the Immich album that is synced", album_match.group(1) if album_match else "Nextcloud",
                 check_album)
-    timezone = ask(ctx, "Time zone", cur.get("TZ") or local_timezone(), check_timezone)
+    # Before the first run cur comes from .env.example, whose Etc/UTC would hide the host's zone.
+    tz_default = (cur.get("TZ") if ENV_FILE.exists() else None) or local_timezone()
+    timezone = ask(ctx, "Time zone", tz_default, check_timezone)
     backup_dir = ask(ctx, "Backup directory (on another disk)", cur.get("CLOUDBUSTER_BACKUP_DIR") or
                      "/mnt/backup/cloudbuster", check_absolute)
 
@@ -492,7 +498,8 @@ def step_config(ctx: Context) -> None:
     a = ctx.answers
     update_env(ctx, env_updates(a, current_env()))
     cfg_base = (CONFIG_YAML if CONFIG_YAML.exists() else YAML_TEMPLATE).read_text(encoding="utf-8")
-    write_private(ctx, CONFIG_YAML, render_config(cfg_base, {"album_name": a.album, "nextcloud_folder": a.nc_folder}))
+    write_private(ctx, CONFIG_YAML, render_config(cfg_base, {"album_name": a.album, "nextcloud_folder": a.nc_folder}),
+                  owner=SYNC_UID)
 
 
 def step_host(ctx: Context) -> None:
