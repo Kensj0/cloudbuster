@@ -18,7 +18,7 @@ Claude Code (like most coding agents) runs shell commands with the rights of the
 | **4. Nextcloud account** (`AGENT_NEXTCLOUD_USER`) | Nextcloud | It sees only the one shared folder. It can't share, create public links or look up other users (it is in a group excluded from sharing). |
 | **5. Immich account** (sync user) | Immich | The sync service sees only the album and its own uploads. Partner sharing must be off. Its API key has only the 7 permissions it needs. |
 | **6. Sync container** | Docker | Only on an internal network with the two web APIs: no internet, no databases. Read-only filesystem, no capabilities, unprivileged uid. |
-| **7. Claude Code settings** | Claude Code (bubblewrap sandbox) | A second line: shell commands sandboxed with no network and no reads outside the folder; risky tools denied; bypass and auto modes disabled. |
+| **7. Claude Code settings** | Claude Code (bubblewrap sandbox) | A second line: shell commands sandboxed with no network and no reads outside the folder; risky tools denied; secret files in the agent's home (`.env`, `*.db`, `token.json`) denied to Claude's read and edit tools, e.g. for a service that runs as the agent user; bypass and auto modes disabled. |
 
 Layers 1 to 3 are the real boundary. Layer 7 is useful but not relied on: the agent user owns its home directory and could change its own settings, and the sandbox covers shell commands only.
 
