@@ -1,0 +1,13 @@
+# Generic Caddyfile. Domains come from environment variables set in your private .env.
+# Put personal additions in a private override, not in this file.
+
+{$NEXTCLOUD_DOMAIN} {
+	reverse_proxy 127.0.0.1:{$NEXTCLOUD_PORT}
+	header Strict-Transport-Security "max-age=15552000; includeSubDomains"
+	redir /.well-known/carddav /remote.php/dav/ 301
+	redir /.well-known/caldav /remote.php/dav/ 301
+}
+
+{$IMMICH_DOMAIN} {
+	reverse_proxy 127.0.0.1:{$IMMICH_PORT}
+}

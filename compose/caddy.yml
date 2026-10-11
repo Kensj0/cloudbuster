@@ -1,0 +1,27 @@
+# Optional: HTTPS with your own domain via Caddy (instead of Tailscale Serve).
+#
+# Enable it by setting in $CLOUDBUSTER_CONFIG_DIR/.env:
+#   CLOUDBUSTER_EXTRA_COMPOSE=compose/caddy.yml
+#   NEXTCLOUD_DOMAIN=cloud.example.com
+#   IMMICH_DOMAIN=photos.example.com
+#   NEXTCLOUD_PUBLIC_HOST=cloud.example.com
+#   NEXTCLOUD_OVERWRITE_PROTOCOL=https
+# and open ports 80 and 443 to this machine in your router.
+#
+# Caddy uses the host network so it can reach the services on 127.0.0.1 only.
+
+services:
+  caddy:
+    restart: unless-stopped
+    container_name: cloudbuster-caddy
+    image: docker.io/library/caddy:2
+    network_mode: host
+    environment:
+      NEXTCLOUD_DOMAIN: ${NEXTCLOUD_DOMAIN:?set NEXTCLOUD_DOMAIN}
+      IMMICH_DOMAIN: ${IMMICH_DOMAIN:?set IMMICH_DOMAIN}
+      NEXTCLOUD_PORT: ${NEXTCLOUD_PORT:-8080}
+      IMMICH_PORT: ${IMMICH_PORT:-2283}
+    volumes:
+      - ./compose/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ${CLOUDBUSTER_DATA_DIR}/caddy/data:/data
+      - ${CLOUDBUSTER_DATA_DIR}/caddy/config:/config

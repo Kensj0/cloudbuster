@@ -1,0 +1,185 @@
+# cloudbuster: Immich + Nextcloud + an album<->folder sync service.
+#
+# Do not run `docker compose` directly in this directory. Use ./bin/cb-compose,
+# which loads the private settings from $CLOUDBUSTER_CONFIG_DIR/.env (outside
+# this repository) and your private override file, if you have one.
+#
+# Based on the official Immich compose file for v3 (keep the Immich images in
+# step with the release you run; see docs/operations.md) and the official
+# Nextcloud image.
+#
+# Networks:
+#   egress            services that need the internet (app store, ML models)
+#   immich-backend    Immich server <-> its own database and Redis (internal)
+#   nextcloud-backend Nextcloud <-> its own database and Redis (internal)
+#   sync              the sync service <-> the two web APIs only (internal, no internet)
+# The databases are never on the same network as the sync service, and the two
+# applications never share a database.
+
+name: cloudbuster
+
+x-restart: &restart
+  restart: unless-stopped
+
+services:
+  # ---------------------------------------------------------------- Immich
+  immich-server:
+    <<: *restart
+    container_name: cloudbuster-immich-server
+    image: ghcr.io/immich-app/immich-server:${IMMICH_VERSION:?set IMMICH_VERSION}
+    volumes:
+      - ${CLOUDBUSTER_DATA_DIR:?set CLOUDBUSTER_DATA_DIR}/immich/library:/data
+      - /etc/localtime:/etc/localtime:ro
+    environment:
+      TZ: ${TZ:-Etc/UTC}
+      DB_HOSTNAME: immich-database
+      DB_USERNAME: postgres
+      DB_DATABASE_NAME: immich
+      DB_PASSWORD: ${IMMICH_DB_PASSWORD:?set IMMICH_DB_PASSWORD}
+      REDIS_HOSTNAME: immich-redis
+    ports:
+      # Only on the loopback interface. Reach it from outside via Tailscale Serve or Caddy.
+      - "127.0.0.1:${IMMICH_PORT:-2283}:2283"
+    networks: [egress, immich-backend, sync]
+    depends_on: [immich-redis, immich-database]
+    healthcheck:
+      disable: false
+
+  immich-machine-learning:
+    <<: *restart
+    container_name: cloudbuster-immich-ml
+    # Runs locally. No photos leave the server. For GPU acceleration see the Immich docs.
+    image: ghcr.io/immich-app/immich-machine-learning:${IMMICH_VERSION}
+    volumes:
+      - immich-model-cache:/cache
+    environment:
+      TZ: ${TZ:-Etc/UTC}
+    networks: [egress, immich-backend]
+    healthcheck:
+      disable: false
+
+  immich-redis:
+    <<: *restart
+    container_name: cloudbuster-immich-redis
+    image: docker.io/valkey/valkey:9@sha256:c123e3715db63d06d4ad6964884037aa0d5d4d703939b9929954112889708e1d
+    networks: [immich-backend]
+    healthcheck:
+      test: redis-cli ping | grep -q PONG || exit 1
+
+  immich-database:
+    <<: *restart
+    container_name: cloudbuster-immich-postgres
+    image: ghcr.io/immich-app/postgres:14-vectorchord0.4.3-pgvectors0.2.0@sha256:bcf63357191b76a916ae5eb93464d65c07511da41e3bf7a8416db519b40b1c23
+    environment:
+      POSTGRES_PASSWORD: ${IMMICH_DB_PASSWORD}
+      POSTGRES_USER: postgres
+      POSTGRES_DB: immich
+      POSTGRES_INITDB_ARGS: "--data-checksums"
+    volumes:
+      - ${CLOUDBUSTER_DATA_DIR}/immich/postgres:/var/lib/postgresql/data
+    shm_size: 128mb
+    networks: [immich-backend]
+    healthcheck:
+      disable: false
+
+  # ------------------------------------------------------------- Nextcloud
+  nextcloud:
+    <<: *restart
+    container_name: cloudbuster-nextcloud
+    image: docker.io/library/nextcloud:${NEXTCLOUD_VERSION:?set NEXTCLOUD_VERSION}
+    volumes:
+      - ${CLOUDBUSTER_DATA_DIR}/nextcloud/html:/var/www/html
+      - ${CLOUDBUSTER_DATA_DIR}/nextcloud/data:/var/www/html/data
+    environment:
+      TZ: ${TZ:-Etc/UTC}
+      POSTGRES_HOST: nextcloud-database
+      POSTGRES_DB: nextcloud
+      POSTGRES_USER: nextcloud
+      POSTGRES_PASSWORD: ${NEXTCLOUD_DB_PASSWORD:?set NEXTCLOUD_DB_PASSWORD}
+      REDIS_HOST: nextcloud-redis
+      REDIS_HOST_PASSWORD: ${NEXTCLOUD_REDIS_PASSWORD:?set NEXTCLOUD_REDIS_PASSWORD}
+      NEXTCLOUD_ADMIN_USER: ${NEXTCLOUD_ADMIN_USER:-}
+      NEXTCLOUD_ADMIN_PASSWORD: ${NEXTCLOUD_ADMIN_PASSWORD:-}
+      # "nextcloud" is how the sync service reaches it on the internal network.
+      NEXTCLOUD_TRUSTED_DOMAINS: "nextcloud localhost 127.0.0.1 ${NEXTCLOUD_PUBLIC_HOST:-}"
+      TRUSTED_PROXIES: "127.0.0.1 172.16.0.0/12"
+      OVERWRITEPROTOCOL: ${NEXTCLOUD_OVERWRITE_PROTOCOL:-}
+      PHP_UPLOAD_LIMIT: 16G
+    ports:
+      - "127.0.0.1:${NEXTCLOUD_PORT:-8080}:80"
+    networks: [egress, nextcloud-backend, sync]
+    depends_on: [nextcloud-database, nextcloud-redis]
+
+  nextcloud-cron:
+    <<: *restart
+    container_name: cloudbuster-nextcloud-cron
+    image: docker.io/library/nextcloud:${NEXTCLOUD_VERSION}
+    entrypoint: /cron.sh
+    volumes:
+      - ${CLOUDBUSTER_DATA_DIR}/nextcloud/html:/var/www/html
+      - ${CLOUDBUSTER_DATA_DIR}/nextcloud/data:/var/www/html/data
+    environment:
+      TZ: ${TZ:-Etc/UTC}
+    networks: [nextcloud-backend]
+    depends_on: [nextcloud]
+
+  nextcloud-database:
+    <<: *restart
+    container_name: cloudbuster-nextcloud-postgres
+    image: docker.io/library/postgres:17-alpine
+    environment:
+      POSTGRES_DB: nextcloud
+      POSTGRES_USER: nextcloud
+      POSTGRES_PASSWORD: ${NEXTCLOUD_DB_PASSWORD}
+    volumes:
+      - ${CLOUDBUSTER_DATA_DIR}/nextcloud/postgres:/var/lib/postgresql/data
+    networks: [nextcloud-backend]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nextcloud -d nextcloud"]
+      interval: 30s
+
+  nextcloud-redis:
+    <<: *restart
+    container_name: cloudbuster-nextcloud-redis
+    image: docker.io/valkey/valkey:9-alpine
+    command: ["valkey-server", "--requirepass", "${NEXTCLOUD_REDIS_PASSWORD}"]
+    networks: [nextcloud-backend]
+
+  # ------------------------------------------------------------------ Sync
+  sync:
+    <<: *restart
+    container_name: cloudbuster-sync
+    build: ./sync
+    image: cloudbuster-sync:local
+    command: ["--config", "/config/config.yaml"]
+    environment:
+      TZ: ${TZ:-Etc/UTC}
+      IMMICH_URL: http://immich-server:2283
+      NEXTCLOUD_URL: http://nextcloud
+      # The sync service's own accounts. These secrets exist only in this container.
+      SYNC_IMMICH_API_KEY: ${SYNC_IMMICH_API_KEY:-}
+      SYNC_NEXTCLOUD_USER: ${SYNC_NEXTCLOUD_USER:-nextcloud-sync}
+      SYNC_NEXTCLOUD_APP_PASSWORD: ${SYNC_NEXTCLOUD_APP_PASSWORD:-}
+    volumes:
+      - ${CLOUDBUSTER_CONFIG_DIR:?set CLOUDBUSTER_CONFIG_DIR}/config.yaml:/config/config.yaml:ro
+      - ${CLOUDBUSTER_DATA_DIR}/sync:/state
+    read_only: true
+    tmpfs:
+      - /tmp:size=4g
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    networks: [sync]
+    depends_on: [immich-server, nextcloud]
+    profiles: [sync]   # started separately, after the accounts and keys exist (docs/install.md)
+
+networks:
+  egress: {}
+  immich-backend:
+    internal: true
+  nextcloud-backend:
+    internal: true
+  sync:
+    internal: true
+
+volumes:
+  immich-model-cache: {}

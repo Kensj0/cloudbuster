@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# docker compose for cloudbuster, with the private settings loaded.
+# Usage: sudo ./bin/cb-compose up -d
+#        sudo ./bin/cb-compose --profile sync up -d sync
+#        sudo ./bin/cb-compose logs -f sync
+# shellcheck source=../scripts/lib.sh
+. "$(dirname "$0")/../scripts/lib.sh"
+cb_require_root
+cb_load_env
+cb_compose "$@"

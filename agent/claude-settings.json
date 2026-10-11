@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "defaultMode": "default",
+    "disableBypassPermissionsMode": "disable",
+    "disableAutoMode": "disable",
+    "deny": [
+      "Read(~/.netrc)",
+      "Read(~/.config/**)",
+      "Read(~/.local/**)",
+      "Read(~/.ssh/**)",
+      "Read(/@CONFIG_DIR@/**)",
+      "Read(/@DATA_DIR@/**)",
+      "Read(//var/lib/docker/**)",
+      "Read(//etc/shadow)",
+      "Edit(~/.bashrc)",
+      "Edit(~/.profile)",
+      "Edit(~/.claude/settings.json)",
+      "Edit(~/.config/**)",
+      "Bash(sudo *)",
+      "Bash(su *)",
+      "Bash(docker *)",
+      "Bash(podman *)",
+      "Bash(nextcloudcmd *)",
+      "Bash(systemctl *)",
+      "Bash(crontab *)"
+    ]
+  },
+  "sandbox": {
+    "enabled": true,
+    "failIfUnavailable": true,
+    "allowUnsandboxedCommands": false,
+    "filesystem": {
+      "denyRead": ["~/", "@CONFIG_DIR@", "@DATA_DIR@", "/var/lib/docker"],
+      "allowRead": ["@AGENT_SYNC_DIR@"],
+      "allowWrite": ["@AGENT_SYNC_DIR@"]
+    },
+    "network": {
+      "allowedDomains": []
+    }
+  }
+}
