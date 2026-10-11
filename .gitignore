@@ -1,0 +1,43 @@
+# Private configuration: never in this repository
+.env
+.env.*
+!.env.example
+config.yaml
+!config.example.yaml
+*.override.yml
+*.override.yaml
+docker-compose.override.yml
+!docker-compose.override.example.yml
+private/
+local/
+
+# Data, state and logs
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+*.log
+logs/
+data/
+library/
+postgres/
+backups/
+takeout*/
+Takeout*/
+*.tgz
+*.zip
+
+# Python and tooling
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+.mypy_cache/
+.ruff_cache/
+
+# Editors and OS
+.idea/
+.vscode/
+*.swp
+.DS_Store

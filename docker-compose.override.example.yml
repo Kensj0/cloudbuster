@@ -1,0 +1,21 @@
+# Example of a PRIVATE override file. Copy to
+# $CLOUDBUSTER_CONFIG_DIR/docker-compose.override.yml (root:root 0600) and
+# ./bin/cb-compose picks it up automatically. Put everything specific to your
+# machine here, never in docker-compose.yml.
+
+services:
+  # Example: hardware-accelerated machine learning (see the Immich docs for the tag).
+  # immich-machine-learning:
+  #   image: ghcr.io/immich-app/immich-machine-learning:${IMMICH_VERSION}-cuda
+  #   deploy:
+  #     resources:
+  #       reservations:
+  #         devices:
+  #           - driver: nvidia
+  #             count: 1
+  #             capabilities: [gpu]
+
+  # Example: a database on an SSD while photos stay on a big disk.
+  # immich-database:
+  #   volumes:
+  #     - /mnt/ssd/immich-postgres:/var/lib/postgresql/data

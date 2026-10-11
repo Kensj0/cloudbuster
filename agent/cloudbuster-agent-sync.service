@@ -1,0 +1,10 @@
+[Unit]
+Description=cloudbuster: sync the agent folder with Nextcloud
+After=network-online.target
+
+[Service]
+Type=oneshot
+# -n reads the agent account's app password from ~/.netrc (machine 127.0.0.1).
+# The URL is plain http on the loopback interface: the traffic never leaves this machine.
+ExecStart=/usr/bin/nextcloudcmd --non-interactive --silent -n --path @AGENT_REMOTE_FOLDER@ @AGENT_SYNC_DIR@ http://127.0.0.1:@NEXTCLOUD_PORT@
+Nice=10

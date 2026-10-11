@@ -1,0 +1,39 @@
+# cloudbuster sync behaviour: TEMPLATE.
+# Copy to $CLOUDBUSTER_CONFIG_DIR/config.yaml (root:root, mode 600). No secrets go
+# here; the sync service reads its keys from environment variables.
+
+sync:
+  # Name of the Immich album. It must be owned by the sync user and shared with
+  # you as "editor" (see docs/install.md for why the sync user owns it).
+  album_name: "Nextcloud"
+
+  # The shared folder as seen by the sync user's Nextcloud account.
+  nextcloud_folder: "/shared-with-agent"
+
+  # Seconds between sync runs.
+  interval_seconds: 60
+
+  # A photo removed from the album (or deleted in Immich):
+  #   trash_file -> move the file to the Nextcloud trash bin (restorable)
+  #   ignore     -> leave the file in Nextcloud, stop tracking it
+  on_album_remove: trash_file
+
+  # A file deleted in the Nextcloud folder:
+  #   remove_from_album -> remove the photo from the album; it stays in the library
+  #   ignore            -> leave the album as it is, stop tracking it
+  on_nextcloud_delete: remove_from_album
+
+  # Safety stop: if one run would delete/remove more than this, nothing is
+  # deleted and an error is logged. Override once with --allow-mass-delete.
+  max_deletions_per_run: 10
+
+  # Only these file types are synced to Immich. Everything else in the folder
+  # (notes, PDFs, spreadsheets the agent writes) stays in Nextcloud only.
+  media_extensions: [jpg, jpeg, png, heic, heif, webp, gif, tif, tiff, avif, jxl, bmp,
+                     dng, cr2, cr3, nef, arw, orf, raf, rw2,
+                     mp4, mov, m4v, 3gp, mkv, webm, avi, mts, m2ts]
+
+  # Inside the container. The host directory is $CLOUDBUSTER_DATA_DIR/sync.
+  state_path: /state/sync.db
+
+  log_level: INFO
