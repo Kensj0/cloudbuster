@@ -8,7 +8,7 @@ sync:
   album_name: "Nextcloud"
 
   # The shared folder as seen by the sync user's Nextcloud account.
-  nextcloud_folder: "/shared-with-agent"
+  nextcloud_folder: "/agent-folder"
 
   # Seconds between sync runs.
   interval_seconds: 60

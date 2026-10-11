@@ -29,7 +29,14 @@ Starting an agent in a folder (`cd folder && claude`) is **not** a security boun
 
 ## Install
 
-Follow [docs/install.md](docs/install.md) step by step. The order matters: the isolation is set up and **verified before** any private photo is imported.
+The easiest path is the guided installer. Run it from your own login with `sudo`; it asks a few questions, shows every command it runs (`--dry-run` changes nothing), and stops with a clear message at each step that needs you (the Tailscale admin console, the Nextcloud folder share, the Immich API key, installing Claude Code as the agent user):
+
+```bash
+cd /opt/cloudbuster
+sudo ./scripts/install.py            # or: sudo ./scripts/install.py --dry-run
+```
+
+It can be resumed at any step (`sudo ./scripts/install.py --list`, then `--from <step>`). The steps below are the same work done by hand, and they are the reference when something goes wrong. Either way, the order matters: the isolation is set up and **verified before** any private photo is imported.
 
 1. Prepare the host and private config (outside this repo)
 2. Start Immich and Nextcloud, create your accounts
@@ -54,7 +61,6 @@ The isolation is agent-agnostic: any local agent run as the agent user gets the 
 - iPhone Live Photos: only the still image is synced (Android motion photos are a single file and sync completely).
 - Polling (default every 60 s), not instant.
 - Images the agent creates are owned by the sync user in Immich; you see them through the album, not in your own timeline.
-- Phase 2 (an interactive terminal installer) is not written yet.
 
 ## License
 

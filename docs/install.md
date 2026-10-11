@@ -1,5 +1,7 @@
 # Installation
 
+**Shortcut:** `sudo ./scripts/install.py` runs these steps with questions, a checklist for the manual parts, and resume support (`--from <step>`). `--dry-run` shows every command without changing anything. The steps below are the same work done by hand.
+
 Follow the steps in order. Each command block says **which Linux user** runs it. "you" means your normal login (with `sudo`); `<agent>` means the agent user (`AGENT_USER` in `.env`).
 
 Do not import any private photos until step 12 has passed.

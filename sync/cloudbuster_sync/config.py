@@ -22,7 +22,7 @@ class Config:
     nextcloud_user: str
     nextcloud_app_password: str
     album_name: str = "Nextcloud"
-    nextcloud_folder: str = "/shared-with-agent"
+    nextcloud_folder: str = "/agent-folder"
     interval_seconds: int = 60
     on_album_remove: str = "trash_file"
     on_nextcloud_delete: str = "remove_from_album"
