@@ -1,5 +1,5 @@
 # cloudbuster sync behaviour: TEMPLATE.
-# Copy to $CLOUDBUSTER_CONFIG_DIR/config.yaml (root:root, mode 600). No secrets go
+# Copy to $CLOUDBUSTER_CONFIG_DIR/config.yaml (10001:10001, mode 400). No secrets go
 # here; the sync service reads its keys from environment variables.
 
 sync:

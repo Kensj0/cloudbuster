@@ -7,7 +7,7 @@
 # Layout (owner, mode):
 #   $CLOUDBUSTER_CONFIG_DIR            root:root 0700   private settings
 #     .env                             root:root 0600
-#     config.yaml                      root:root 0600
+#     config.yaml                      10001:10001 0400 (read by the sync container's uid, no secrets)
 #     docker-compose.override.yml      root:root 0600   (optional, your own additions)
 #   $CLOUDBUSTER_DATA_DIR              root:root 0700   nobody but root can even list it
 #     immich/library  immich/postgres  nextcloud/html  nextcloud/data  nextcloud/postgres
@@ -30,6 +30,9 @@ fi
 chown -R root:root "$CLOUDBUSTER_CONFIG_DIR"
 chmod 0700 "$CLOUDBUSTER_CONFIG_DIR"
 find "$CLOUDBUSTER_CONFIG_DIR" -type f -exec chmod 0600 {} +
+# The sync container (uid 10001) reads config.yaml through a bind mount; the directory stays 0700.
+chown 10001:10001 "$CLOUDBUSTER_CONFIG_DIR/config.yaml"
+chmod 0400 "$CLOUDBUSTER_CONFIG_DIR/config.yaml"
 
 cb_load_env
 grep -q 'change-me' "$CB_ENV_FILE" && cb_die "$CB_ENV_FILE still contains 'change-me' placeholders"
